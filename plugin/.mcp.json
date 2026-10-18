@@ -1,0 +1,10 @@
+{
+  "userproof": {
+    "type": "stdio",
+    "command": "node",
+    "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/server.mjs"],
+    "env": {
+      "USERPROOF_PLUGIN_KEY": "${user_config.api_key}"
+    }
+  }
+}

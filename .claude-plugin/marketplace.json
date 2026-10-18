@@ -1,0 +1,14 @@
+{
+  "name": "userproof",
+  "owner": { "name": "UserProof", "url": "https://getuserproof.com" },
+  "description": "UserProof for Claude Code: the one fix your real visitors are begging for, with the file and line.",
+  "plugins": [
+    {
+      "name": "userproof",
+      "source": "./plugin",
+      "description": "Sets up UserProof from the terminal, then shows the top fix from real visitor sessions and checks it after you ship.",
+      "version": "3.0.0",
+      "homepage": "https://getuserproof.com"
+    }
+  ]
+}
