@@ -29944,7 +29944,7 @@ var StdioServerTransport = class {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-var VERSION = "3.3.0";
+var VERSION = "3.5.0";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 function readKeyFile(p) {
   try {
@@ -30092,6 +30092,15 @@ tool(
     const site = await getActiveSite();
     if (!site) return text(SELECT_PROMPT);
     const { data } = await api("/v2/goals", { method: "POST", body: JSON.stringify({ site_id: site.id, name, kind, matches, value_usd }) });
+    return text(data.text || JSON.stringify(data), data);
+  }
+);
+tool(
+  "upgrade",
+  "Get a checkout link to upgrade the UserProof plan (Pro $29/mo for 50,000 visits, Scale $99/mo for 250,000; both unlimited sites). Use when the user asks to upgrade or pay. Show the link on its own line.",
+  { plan: external_exports3.enum(["pro", "scale"]).optional().describe("Defaults to the next plan up") },
+  async ({ plan }) => {
+    const { data } = await api("/v2/upgrade", { method: "POST", body: JSON.stringify({ plan }) });
     return text(data.text || JSON.stringify(data), data);
   }
 );
