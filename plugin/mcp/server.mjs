@@ -29944,7 +29944,7 @@ var StdioServerTransport = class {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-var VERSION = "3.0.0";
+var VERSION = "3.1.0";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 function readKeyFile(p) {
   try {
@@ -30066,7 +30066,9 @@ ${data.upgrade_url}
 
 ${data.action_for_user}` : `${data.text}
 
-(${data.usage?.remaining} of ${data.usage?.limit} analyses left this month)`;
+(${data.usage?.remaining} of ${data.usage?.limit} analyses left this month)${data.notice ? `
+
+${data.notice}` : ""}`;
     return text(t, data);
   }
 );

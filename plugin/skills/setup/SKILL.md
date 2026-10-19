@@ -21,8 +21,15 @@ If `.userproof` (or the legacy `.whyusersleave`) has a `site_id` and `~/.config/
 ## Step 1: account (about 1 minute)
 
 1. **Find the live domain in the repo.** Don't ask for it. Check `metadataBase` or canonical URLs in the root layout, `homepage` in `package.json`, `CNAME`, `.vercel/project.json`, and the first `https://` URL in `README.md`.
-2. **Get an email.** Ask one question: **"What email should the account be on?"** Skip this if the user already gave one.
-3. **Create the account.** This one command saves the key straight to a file (mode 600) and prints everything except the key, so the key never lands in the transcript:
+2. **Already have a key?** If `~/.config/userproof/key` exists, don't sign up again (that would replace the key). Add this site to the account instead, then go to item 4:
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $K" -H 'Content-Type: application/json' \
+  -d '{"domain":"THEIR_DOMAIN"}' "$API/v2/sites"
+```
+
+3. **Get an email.** Ask one question: **"What email should the account be on?"** Skip this if the user already gave one.
+   **Create the account.** This one command saves the key straight to a file (mode 600) and prints everything except the key, so the key never lands in the transcript:
 
 ```bash
 mkdir -p ~/.config/userproof
