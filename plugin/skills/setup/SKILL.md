@@ -34,6 +34,8 @@ If `.userproof` has a `site_id` and `~/.config/userproof/key` exists, skip to st
 - **Value:** "What is one <goal> worth, roughly?" Options: the price you found if any, "Skip for now". If the repo serves several domains, ask "Which site should UserProof record?" here instead and skip the value.
 - **Deploy:** "When setup is done, should I commit and push so it goes live?" Options: "Yes, commit and push", "No, I'll deploy it".
 
+**Several sites in one go:** still ask. Put one goal question per site in the same AskUserQuestion call (4 questions per call; a second call only if there are more than 4 sites), and skip the value and deploy questions or ask them once for all sites. Never save a goal the user didn't pick. Only when no question tool exists (a headless run) pick the best candidate yourself and say which and why.
+
 Echo the answers back in one line, then run steps 1a to 5 without asking anything else. (Signing in, in step 1a, isn't a question: it's a link they open.)
 
 ## Step 1a: account
@@ -138,7 +140,7 @@ curl -s -X POST -H "Authorization: Bearer $K" -H 'Content-Type: application/json
   -d '{"site_id":"SITE_ID","name":"Book a call","kind":"click","matches":["Book a call","BOOK A CALL"]}' "$API/v2/goals"
 ```
 
-`kind` is `click` (a click whose text or selector contains a match) or `page` (a visit to a path; end it with `*` for every path under it, like `/c/*`). Add `"value_usd": 29` if they gave a value. Say back what it returns in one line.
+`kind` is `click` (a click whose text or selector contains a match) or `page` (a visit to a path; end it with `*` for every path under it, like `/c/*`). Page addresses are recorded without query strings, so a page goal never includes `?…`. Add `"value_usd": 29` if they gave a value. Say back what it returns in one line.
 
 ## Step 3c: deploy (only if they said yes)
 
