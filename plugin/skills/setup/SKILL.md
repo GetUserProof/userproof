@@ -24,19 +24,17 @@ If `.userproof` has a `site_id` and `~/.config/userproof/key` exists, skip to st
 
 **Look (no questions):**
 1. **Live domain:** `metadataBase` or canonical URLs in the root layout, `homepage` in `package.json`, `CNAME`, `.vercel/project.json`, the first `https://` URL in `README.md`.
-2. **Existing account:** does `~/.config/userproof/key` exist? Then no email is needed.
-3. **Their email to suggest:** `git config user.email`.
-4. **Goal candidates:** Stripe or checkout links (`buy.stripe.com`, `checkout`), signup or contact forms and where they post, calendar links (`calendly`, `cal.com`), "thank you" or success pages, and the text of the main call-to-action buttons. Keep up to 3, with the exact button text as rendered (with an `uppercase` class, list both cases) or the success page path. Note any price you find.
-5. **Where the snippet goes** (table in step 2), and whether an older tracking tag is already there.
-6. **How the site deploys:** a `vercel.json`/`.vercel`, `netlify.toml` or similar plus a git remote means a push deploys it.
+2. **Existing account:** does `~/.config/userproof/key` exist? Then skip the sign-in.
+3. **Goal candidates:** Stripe or checkout links (`buy.stripe.com`, `checkout`), signup or contact forms and where they post, calendar links (`calendly`, `cal.com`), "thank you" or success pages, and the text of the main call-to-action buttons. Keep up to 3, with the exact button text as rendered (with an `uppercase` class, list both cases) or the success page path. Note any price you find.
+4. **Where the snippet goes** (table in step 2), and whether an older tracking tag is already there.
+5. **How the site deploys:** a `vercel.json`/`.vercel`, `netlify.toml` or similar plus a git remote means a push deploys it.
 
 **Ask once.** One AskUserQuestion call with these questions, skipping any the repo already answered:
-- **Email** (only without an existing key): "What email should the UserProof account use?" Options: the git email, plus Other.
 - **Goal:** "What's the one thing visitors should do on <domain>?" Options: your candidates, e.g. "Click 'Book a call'", "Reach /thank-you". The user can type another.
 - **Value:** "What is one <goal> worth, roughly?" Options: the price you found if any, "Skip for now". If the repo serves several domains, ask "Which site should UserProof record?" here instead and skip the value.
 - **Deploy:** "When setup is done, should I commit and push so it goes live?" Options: "Yes, commit and push", "No, I'll deploy it".
 
-Echo the answers back in one line, then run steps 1a to 5 without asking anything else.
+Echo the answers back in one line, then run steps 1a to 5 without asking anything else. (Signing in, in step 1a, isn't a question: it's a link they open.)
 
 ## Step 1a: account
 
@@ -49,21 +47,34 @@ curl -s -X POST -H "Authorization: Bearer $K" -H 'Content-Type: application/json
 
    A `site_limit` result means the Free plan's 3 sites are taken: show its `upgrade_url` on its own line and stop.
 
-2. **New account.** This one command saves the key straight to a file (mode 600) and prints everything except the key, so the key never lands in the transcript:
+2. **No key yet: sign in.** Start a sign-in and show the link. The person signs in on getuserproof.com with GitHub, Google or an emailed link and approves the code; nobody types an email into the terminal.
 
 ```bash
 mkdir -p ~/.config/userproof
-curl -s -X POST "$API/v2/signup" -H 'Content-Type: application/json' \
-  -d '{"email":"THEIR_EMAIL","domain":"THEIR_DOMAIN"}' | node -e '
+curl -s -X POST "$API/v2/connect/start" | node -e '
 let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);
-if(!j.user_api_key){console.log(s);process.exit(1)}
-const f=require("os").homedir()+"/.config/userproof/key";
-require("fs").writeFileSync(f,j.user_api_key+"\n",{mode:0o600});
-console.log(JSON.stringify({site:j.site,snippet:j.snippet,key_saved_to:f}))})'
+require("fs").writeFileSync(require("os").homedir()+"/.config/userproof/.connect",j.poll_token,{mode:0o600});
+console.log(j.text)})'
 ```
 
+   Show the user the printed line exactly (the link and the code), then wait for them to approve. This waits on a person, so it's fine to loop, up to 10 minutes:
+
+```bash
+for i in $(seq 1 12); do
+  R=$(curl -s -X POST "$API/v2/connect/poll" -H 'Content-Type: application/json' \
+    -d "{\"poll_token\":\"$(cat ~/.config/userproof/.connect)\",\"wait\":50}")
+  echo "$R" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);
+  if(j.user_api_key){const f=require("os").homedir()+"/.config/userproof/key";require("fs").writeFileSync(f,j.user_api_key+"\n",{mode:0o600});
+  require("fs").rmSync(require("os").homedir()+"/.config/userproof/.connect",{force:true});console.log("signed in as "+j.email);process.exit(0)}
+  console.log(j.status);process.exit(j.status==="pending"?1:2)})' && break
+  [ $? -eq 2 ] && break
+done
+```
+
+   `signed in as …` means the key is saved. `expired` means start again. Then add the site with the item 1 command (the new account has no sites yet).
+
 3. **Record the site.** Write `{"site_id": "...", "domain": "...", "fixes": []}` to `.userproof`. Tell the user the key is in `~/.config/userproof/key` (the MCP tools read it themselves after a Claude Code restart). Don't print the key.
-4. **If signup returns 409**, the email already has an account: say so and stop; they need the key from the machine that signed up.
+4. **Signing in with an email that already has an account** connects to that account and adds a key for this machine.
 
 ## Step 2: the snippet (about 1 minute)
 
