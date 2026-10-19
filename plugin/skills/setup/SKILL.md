@@ -5,7 +5,7 @@ description: Set up UserProof for this project from the terminal. It creates the
 
 Take this user from nothing to "UserProof is recording", proven, with the site's goal set, in a few minutes, without them opening a dashboard. Then run the free scan as a bonus. The big moment comes later: the first finding from their real visitors, ranked by what it costs the goal.
 
-**How to ask:** use your structured question tool (AskUserQuestion) whenever there are choices, with the options you found in the repo. Echo each answer back in one line before acting on it. At most four questions in the whole setup: email, site (only if the repo serves more than one), goal, and what a goal is worth (skippable).
+**How to ask:** look first, then ask everything in **one** AskUserQuestion call (up to 4 questions), then do the whole setup without stopping to ask again. Never ask a question you could answer from the repo.
 
 Everything here goes over plain HTTP, so it works before the MCP has a key:
 
@@ -18,22 +18,38 @@ Shell state doesn't persist between commands. Re-run those two lines in every co
 
 ## Step 0: already set up?
 
-If `.userproof` (or the legacy `.whyusersleave`) has a `site_id` and `~/.config/userproof/key` exists, skip to step 4.
+If `.userproof` has a `site_id` and `~/.config/userproof/key` exists, skip to step 4.
 
-## Step 1: account (about 1 minute)
+## Step 1: look, then ask once (about 1 minute)
 
-1. **Find the live domain in the repo.** Don't ask for it. Check `metadataBase` or canonical URLs in the root layout, `homepage` in `package.json`, `CNAME`, `.vercel/project.json`, and the first `https://` URL in `README.md`.
-2. **Already have a key?** If `~/.config/userproof/key` exists, don't sign up again (that would replace the key). Add this site to the account instead, then go to item 4:
+**Look (no questions):**
+1. **Live domain:** `metadataBase` or canonical URLs in the root layout, `homepage` in `package.json`, `CNAME`, `.vercel/project.json`, the first `https://` URL in `README.md`.
+2. **Existing account:** does `~/.config/userproof/key` exist? Then no email is needed.
+3. **Their email to suggest:** `git config user.email`.
+4. **Goal candidates:** Stripe or checkout links (`buy.stripe.com`, `checkout`), signup or contact forms and where they post, calendar links (`calendly`, `cal.com`), "thank you" or success pages, and the text of the main call-to-action buttons. Keep up to 3, with the exact button text as rendered (with an `uppercase` class, list both cases) or the success page path. Note any price you find.
+5. **Where the snippet goes** (table in step 2), and whether an older tracking tag is already there.
+6. **How the site deploys:** a `vercel.json`/`.vercel`, `netlify.toml` or similar plus a git remote means a push deploys it.
+
+**Ask once.** One AskUserQuestion call with these questions, skipping any the repo already answered:
+- **Email** (only without an existing key): "What email should the UserProof account use?" Options: the git email, plus Other.
+- **Goal:** "What's the one thing visitors should do on <domain>?" Options: your candidates, e.g. "Click 'Book a call'", "Reach /thank-you". The user can type another.
+- **Value:** "What is one <goal> worth, roughly?" Options: the price you found if any, "Skip for now". If the repo serves several domains, ask "Which site should UserProof record?" here instead and skip the value.
+- **Deploy:** "When setup is done, should I commit and push so it goes live?" Options: "Yes, commit and push", "No, I'll deploy it".
+
+Echo the answers back in one line, then run steps 1a to 5 without asking anything else.
+
+## Step 1a: account
+
+1. **Existing key:** add this site to the account instead of signing up (signing up again would replace the key):
 
 ```bash
 curl -s -X POST -H "Authorization: Bearer $K" -H 'Content-Type: application/json' \
   -d '{"domain":"THEIR_DOMAIN"}' "$API/v2/sites"
 ```
 
-   A `site_limit` result means the Free plan's 3 sites are taken: show its `upgrade_url` on its own line, and when the user says they upgraded, run the same command again.
+   A `site_limit` result means the Free plan's 3 sites are taken: show its `upgrade_url` on its own line and stop.
 
-3. **Get an email.** Ask one question: **"What email should the account be on?"** Skip this if the user already gave one.
-   **Create the account.** This one command saves the key straight to a file (mode 600) and prints everything except the key, so the key never lands in the transcript:
+2. **New account.** This one command saves the key straight to a file (mode 600) and prints everything except the key, so the key never lands in the transcript:
 
 ```bash
 mkdir -p ~/.config/userproof
@@ -46,8 +62,8 @@ require("fs").writeFileSync(f,j.user_api_key+"\n",{mode:0o600});
 console.log(JSON.stringify({site:j.site,snippet:j.snippet,key_saved_to:f}))})'
 ```
 
-4. **Record the site.** Write `{"site_id": "...", "domain": "...", "fixes": []}` to `.userproof`. Tell the user the key is in `~/.config/userproof/key`. The MCP tools read that file themselves, so nothing needs exporting; they work after a Claude Code restart (or a `/mcp` reconnect). Don't print the key.
-5. **If it returns 409**, the email already has an account. Ask for the key and stop if they don't have it.
+3. **Record the site.** Write `{"site_id": "...", "domain": "...", "fixes": []}` to `.userproof`. Tell the user the key is in `~/.config/userproof/key` (the MCP tools read it themselves after a Claude Code restart). Don't print the key.
+4. **If signup returns 409**, the email already has an account: say so and stop; they need the key from the machine that signed up.
 
 ## Step 2: the snippet (about 1 minute)
 
@@ -63,8 +79,8 @@ Put `snippet` in the site's `<head>`. Use the first layout that exists:
 | Nuxt | `nuxt.config.*` under `app.head.script` |
 | Rails | `app/views/layouts/application.html.erb` |
 
-1. **Old snippet:** if an older tracking tag is already there (legacy `whyusersleave.com/sdk.js`), replace it rather than adding a second one.
-2. **Show the diff, then write it.** Apply it after the user approves, or directly if they already asked you to set it up.
+1. **Old tag:** if an older tracking tag for this product is already there (a `<script>` whose src ends in `/sdk.js` with a `data-site`), replace it rather than adding a second one. Call it "the old tracking tag"; don't name the old product.
+2. **Write it** (running setup is the go-ahead), and show the diff in the summary.
 3. **JSX:** attribute names stay the same (`data-site`, `data-api`, `defer`).
 
 ## Step 3: prove it records (about 2 minutes)
@@ -102,28 +118,27 @@ curl -s -H "Authorization: Bearer $K" "$API/v2/first-event?site_id=SITE_ID&wait=
 > Once this is deployed, I'll pull your first finding from real visitors: where they get stuck on the way to your goal, and the file:line to fix. Next time you open Claude Code here, UserProof will tell you in one line when there's something new.
 > While we wait, I'll run a free scan of the live site for anything broken right now.
 
-## Step 3b: the goal (about 1 minute)
+## Step 3b: save the goal
 
-The goal is the one thing visitors should do on this site. Everything UserProof says later is ranked by it.
-
-1. **Find candidates in the code before asking.** Search for: Stripe or checkout links (`buy.stripe.com`, `checkout`), signup or contact forms and where they post, calendar links (`calendly`, `cal.com`), "thank you" or success pages, and the text of the main call-to-action buttons. Keep up to 3 real candidates, with the exact button text as rendered (check for `uppercase` classes: then list both cases) or the success page path.
-2. **Ask once** with AskUserQuestion: "What's the one thing visitors should do on <domain>?" Options = your candidates, e.g. "Click 'Book a call' (pricing and home pages)", "Reach /thank-you after signup". The user can type another.
-3. **Optional value:** ask "What is one <goal> worth, roughly?" with options from the code where possible (the Stripe price you found), plus "Skip for now". Skip means no dollar figures, nothing else.
-4. **Save it:**
+Save the goal from step 1 (no new question):
 
 ```bash
 curl -s -X POST -H "Authorization: Bearer $K" -H 'Content-Type: application/json' \
   -d '{"site_id":"SITE_ID","name":"Book a call","kind":"click","matches":["Book a call","BOOK A CALL"]}' "$API/v2/goals"
 ```
 
-   `kind` is `click` (a click whose text or selector contains a match) or `page` (a visit to a path; end it with `*` for every path under it, like `/c/*`). Add `"value_usd": 29` if they gave a value. Say back what it returns in one line.
+`kind` is `click` (a click whose text or selector contains a match) or `page` (a visit to a path; end it with `*` for every path under it, like `/c/*`). Add `"value_usd": 29` if they gave a value. Say back what it returns in one line.
+
+## Step 3c: deploy (only if they said yes)
+
+Commit only the snippet change and `.userproof` with a short message, and push. Then check the live page **once**, in the background if your harness supports it (`curl -s <live url> | grep -c ingest.getuserproof.com`), and move on. Never wait or poll in the foreground for a deploy: if it isn't live yet, say it will show up when the deploy finishes. If they said no, leave the changes uncommitted and say what to deploy.
 
 ## Step 4: free scan of the live site (1-3 minutes)
 
 ```bash
 S=$(curl -s -X POST -H "Authorization: Bearer $K" -H 'Content-Type: application/json' \
   -d '{"site_id":"SITE_ID"}' "$API/v2/scan")
-# then poll until status is done:
+# then wait for it (the API holds the request up to 60 s; at most 3 calls):
 curl -s -H "Authorization: Bearer $K" "$API/v2/scan?scan_id=SCAN_ID&wait=60"
 ```
 
@@ -159,7 +174,7 @@ Say exactly this shape, and nothing longer:
 
 Then:
 1. Add `{ "defect_id": "...", "file": "...", "line": N }` to `fixes` in `.userproof`.
-2. Only apply the fix if the user approves.
+2. Offer the fix as the last line ("Want me to apply it?"). This is the only question after step 1, and it's optional.
 3. If a dev server works, `check_fix` with `url=http://localhost:PORT` shows the fix works before deploy.
 4. After the user deploys:
    - call `POST $API/v2/fix-applied` with `{"finding_id":"<defect id>"}`;
@@ -168,7 +183,8 @@ Then:
 
 ## Rules
 
-- **One question per turn.** The only questions are the email, the site if there are several, the goal, its value, and approval of the diff.
+- **One round of questions** (step 1), all in one AskUserQuestion call. After that, no questions until the optional fix offer at the end.
+- **No foreground waiting:** never loop or sleep waiting for a deploy, a build or traffic. One check, then move on.
 - **Key handling:** never print the API key. It lives only in `~/.config/userproof/key`, never in the repo or a commit.
 - **Processes:** stop only the dev server you started, by its PID.
 - **Numbers:** they come from the API responses only. Don't add estimates.
