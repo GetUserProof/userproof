@@ -28,6 +28,8 @@ curl -s -X POST -H "Authorization: Bearer $K" -H 'Content-Type: application/json
   -d '{"domain":"THEIR_DOMAIN"}' "$API/v2/sites"
 ```
 
+   A `site_limit` result means the Free plan's 3 sites are taken: show its `upgrade_url` on its own line, and when the user says they upgraded, run the same command again.
+
 3. **Get an email.** Ask one question: **"What email should the account be on?"** Skip this if the user already gave one.
    **Create the account.** This one command saves the key straight to a file (mode 600) and prints everything except the key, so the key never lands in the transcript:
 
@@ -152,4 +154,4 @@ Then:
 - **Key handling:** never print the API key. It lives only in `~/.config/userproof/key`, never in the repo or a commit.
 - **Processes:** stop only the dev server you started, by its PID.
 - **Numbers:** they come from the API responses only. Don't add estimates.
-- **No traffic yet:** don't call get_top_fix before the site has live traffic. It spends a monthly analysis, and on day one it will find nothing.
+- **No traffic yet:** don't call get_top_fix before the site has live traffic. On day one it will find nothing.

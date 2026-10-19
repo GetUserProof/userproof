@@ -7,7 +7,7 @@
       "name": "userproof",
       "source": "./plugin",
       "description": "Sets up UserProof from the terminal, then shows the top fix from real visitor sessions and checks it after you ship.",
-      "version": "3.1.0",
+      "version": "3.2.0",
       "homepage": "https://getuserproof.com"
     }
   ]

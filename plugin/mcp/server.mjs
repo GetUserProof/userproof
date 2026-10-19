@@ -29944,7 +29944,7 @@ var StdioServerTransport = class {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-var VERSION = "3.1.0";
+var VERSION = "3.2.0";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 function readKeyFile(p) {
   try {
@@ -30054,19 +30054,13 @@ Call select_site with a site_id or domain to choose one.`, { sites });
 );
 tool(
   "get_top_fix",
-  "The single highest-impact fix on this site, with the sessions that prove it and the dollar math when a conversion event is set. Uses one of the account's monthly analyses. If it returns quota_exceeded, show the user the upgrade link once and do not call it again until they upgrade.",
+  "The single highest-impact fix on this site, with the sessions that prove it and the dollar math when a conversion event is set. Analyses are unlimited; plans are priced on recorded visits. If the result has a notice (visit limit near or passed), tell the user in one line and show any upgrade link on its own line.",
   {},
   async () => {
     const site = await getActiveSite();
     if (!site) return text(SELECT_PROMPT);
     const { data } = await api(`/v2/top-fix?site_id=${encodeURIComponent(site.id)}`);
-    const t = data.status === "quota_exceeded" ? `${data.text}
-
-${data.upgrade_url}
-
-${data.action_for_user}` : `${data.text}
-
-(${data.usage?.remaining} of ${data.usage?.limit} analyses left this month)${data.notice ? `
+    const t = `${data.text}${data.notice ? `
 
 ${data.notice}` : ""}`;
     return text(t, data);
@@ -30135,8 +30129,14 @@ tool("get_activation", "Onboarding milestones for this UserProof account and min
   const { data } = await api("/v2/activation");
   return text(Object.entries(data.minutes_from_signup || {}).map(([k, v]) => `${k}: ${v} min`).join("\n") || "No milestones yet.", data);
 });
-tool("get_usage", "How many analyses are left this month and when the count resets. Free.", {}, async () => {
+tool("get_usage", "The plan, recorded visits this month against its limit, sites against the site limit, and when the count resets. Free.", {}, async () => {
   const { data } = await api("/v2/usage");
-  return text(`${data.used}/${data.limit} analyses used on the ${data.plan} plan; resets ${String(data.resets_at).slice(0, 10)}.`, data);
+  const n = (x) => Number(x).toLocaleString("en-US");
+  return text([
+    `${data.plan} plan: ${n(data.visits)} of ${n(data.visit_limit)} recorded visits this month (resets ${String(data.resets_at).slice(0, 10)}).`,
+    `Sites: ${data.sites} of ${data.site_limit ?? "unlimited"}. Analyses: unlimited.`,
+    data.sampling ? `Over the limit: ${data.sampling}.` : null,
+    data.manage_billing_url ? `Manage billing: ${data.manage_billing_url}` : null
+  ].filter(Boolean).join("\n"), data);
 });
 await server.connect(new StdioServerTransport());
