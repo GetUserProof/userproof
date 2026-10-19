@@ -29944,7 +29944,7 @@ var StdioServerTransport = class {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-var VERSION = "3.5.0";
+var VERSION = "3.5.1";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 function readKeyFile(p) {
   try {
@@ -30054,7 +30054,7 @@ Call select_site with a site_id or domain to choose one.`, { sites });
 );
 tool(
   "get_top_fix",
-  "The single highest-impact fix on this site, with the sessions that prove it and the dollar math when a conversion event is set. Analyses are unlimited; plans are priced on recorded visits. If the result has a notice (visit limit near or passed), tell the user in one line and show any upgrade link on its own line.",
+  "The single highest-impact fix on this site, with the sessions that prove it and the dollar math when a conversion event is set. Analyses are unlimited; plans are priced on recorded visits. If the result has a notice (visit limit near or passed), tell the user in one line and show any upgrade link on its own line. Free keeps 7 days of recordings: if the user asks about anything older or longer trends, tell them Pro and Scale keep 90 days and offer the upgrade tool.",
   {},
   async () => {
     const site = await getActiveSite();
@@ -30159,7 +30159,8 @@ tool("get_usage", "The plan, recorded visits this month against its limit, sites
   const n = (x) => Number(x).toLocaleString("en-US");
   return text([
     `${data.plan} plan: ${n(data.visits)} of ${n(data.visit_limit)} recorded visits this month (resets ${String(data.resets_at).slice(0, 10)}).`,
-    `Sites: ${data.sites} of ${data.site_limit ?? "unlimited"}. Analyses: unlimited.`,
+    `Sites: ${data.sites} of ${data.site_limit ?? "unlimited"}. Analyses: unlimited. Recordings kept: ${data.retention_days} days.`,
+    data.retention_note,
     data.sampling ? `Over the limit: ${data.sampling}.` : null,
     data.manage_billing_url ? `Manage billing: ${data.manage_billing_url}` : null
   ].filter(Boolean).join("\n"), data);
