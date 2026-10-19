@@ -5,7 +5,7 @@ UserProof shows you the one fix your real visitors are begging for, with the fil
 ## Install
 
 ```
-/plugin marketplace add rdoyle99/userproof
+/plugin marketplace add GetUserProof/userproof
 /plugin install userproof@userproof
 /userproof:setup
 ```

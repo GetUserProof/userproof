@@ -5,7 +5,7 @@
   "description": "UX analytics for your coding agent. Sets up tracking from the terminal, then tells you what real visitors are failing to do on your site and hands you the fix.",
   "author": { "name": "UserProof", "url": "https://getuserproof.com" },
   "homepage": "https://getuserproof.com",
-  "repository": "https://github.com/rdoyle99/userproof",
+  "repository": "https://github.com/GetUserProof/userproof",
   "license": "MIT",
   "keywords": ["ux", "analytics", "conversion", "user-behavior", "dead-clicks"],
   "skills": "./skills/",
