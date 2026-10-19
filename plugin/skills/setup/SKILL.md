@@ -3,7 +3,9 @@ name: setup
 description: Set up UserProof for this project from the terminal. It creates the account, adds the tracking snippet to the codebase, proves the snippet records, and runs a free scan of the live site for broken elements with the file and line. Use when the user installs the plugin, asks to set up UserProof or session recording, or asks what's broken on their site before they have traffic.
 ---
 
-Take this user from nothing to "UserProof is recording", proven, in a few minutes, without them opening a dashboard. Then run the free scan as a bonus. The big moment comes later: the first finding from their real visitors.
+Take this user from nothing to "UserProof is recording", proven, with the site's goal set, in a few minutes, without them opening a dashboard. Then run the free scan as a bonus. The big moment comes later: the first finding from their real visitors, ranked by what it costs the goal.
+
+**How to ask:** use your structured question tool (AskUserQuestion) whenever there are choices, with the options you found in the repo. Echo each answer back in one line before acting on it. At most four questions in the whole setup: email, site (only if the repo serves more than one), goal, and what a goal is worth (skippable).
 
 Everything here goes over plain HTTP, so it works before the MCP has a key:
 
@@ -97,8 +99,24 @@ curl -s -H "Authorization: Bearer $K" "$API/v2/first-event?site_id=SITE_ID&wait=
 **This is the first-value moment.** Say it in this shape:
 
 > **UserProof is recording** (event received from `<localhost or live page>`, env `<dev|verify>`).
-> Once this is deployed, I'll pull your first finding from real visitors: where they get stuck and the file:line to fix.
+> Once this is deployed, I'll pull your first finding from real visitors: where they get stuck on the way to your goal, and the file:line to fix. Next time you open Claude Code here, UserProof will tell you in one line when there's something new.
 > While we wait, I'll run a free scan of the live site for anything broken right now.
+
+## Step 3b: the goal (about 1 minute)
+
+The goal is the one thing visitors should do on this site. Everything UserProof says later is ranked by it.
+
+1. **Find candidates in the code before asking.** Search for: Stripe or checkout links (`buy.stripe.com`, `checkout`), signup or contact forms and where they post, calendar links (`calendly`, `cal.com`), "thank you" or success pages, and the text of the main call-to-action buttons. Keep up to 3 real candidates, with the exact button text as rendered (check for `uppercase` classes: then list both cases) or the success page path.
+2. **Ask once** with AskUserQuestion: "What's the one thing visitors should do on <domain>?" Options = your candidates, e.g. "Click 'Book a call' (pricing and home pages)", "Reach /thank-you after signup". The user can type another.
+3. **Optional value:** ask "What is one <goal> worth, roughly?" with options from the code where possible (the Stripe price you found), plus "Skip for now". Skip means no dollar figures, nothing else.
+4. **Save it:**
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $K" -H 'Content-Type: application/json' \
+  -d '{"site_id":"SITE_ID","name":"Book a call","kind":"click","matches":["Book a call","BOOK A CALL"]}' "$API/v2/goals"
+```
+
+   `kind` is `click` (a click whose text or selector contains a match) or `page` (a visit to a path; end it with `*` for every path under it, like `/c/*`). Add `"value_usd": 29` if they gave a value. Say back what it returns in one line.
 
 ## Step 4: free scan of the live site (1-3 minutes)
 
@@ -150,7 +168,7 @@ Then:
 
 ## Rules
 
-- **One question per turn.** The only questions are the email and approval of the diff.
+- **One question per turn.** The only questions are the email, the site if there are several, the goal, its value, and approval of the diff.
 - **Key handling:** never print the API key. It lives only in `~/.config/userproof/key`, never in the repo or a commit.
 - **Processes:** stop only the dev server you started, by its PID.
 - **Numbers:** they come from the API responses only. Don't add estimates.

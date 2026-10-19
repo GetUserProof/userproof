@@ -29944,7 +29944,7 @@ var StdioServerTransport = class {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
-var VERSION = "3.2.0";
+var VERSION = "3.3.0";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 function readKeyFile(p) {
   try {
@@ -30077,6 +30077,22 @@ tool(
   async ({ finding_id, fixed_at, note }) => {
     const { data } = await api("/v2/fix-applied", { method: "POST", body: JSON.stringify({ finding_id, fixed_at, note }) });
     return text(data.text || JSON.stringify(data));
+  }
+);
+tool(
+  "set_goal",
+  "Set the one thing this site's visitors should do (book a call, start checkout, sign up). Findings then rank by what they cost it, and fixes are judged by it. Find candidates in the code first (Stripe/checkout links, signup forms, CTA button text) and confirm with the user. Free.",
+  {
+    name: external_exports3.string().describe("Plain name, e.g. 'Book a call'"),
+    kind: external_exports3.enum(["click", "page"]).describe("click = a click whose text or selector contains match; page = visiting a path (exact, or a prefix ending in *)"),
+    matches: external_exports3.array(external_exports3.string()).min(1).describe("Button texts exactly as rendered (e.g. ['Book a call', 'BOOK A CALL']) or paths (e.g. ['/thank-you', '/c/*'])"),
+    value_usd: external_exports3.number().optional().describe("What one conversion is worth, if the user knows; enables dollar figures")
+  },
+  async ({ name, kind, matches, value_usd }) => {
+    const site = await getActiveSite();
+    if (!site) return text(SELECT_PROMPT);
+    const { data } = await api("/v2/goals", { method: "POST", body: JSON.stringify({ site_id: site.id, name, kind, matches, value_usd }) });
+    return text(data.text || JSON.stringify(data), data);
   }
 );
 tool(
