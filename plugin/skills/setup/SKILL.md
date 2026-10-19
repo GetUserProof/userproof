@@ -157,6 +157,24 @@ The scan is read-only and labelled "scan". It finds things that are broken. It d
 
 **If it finds no defects**, say "The scan found nothing broken on the live site" in one line, skip steps 5-6, and end with the real-visitor promise from step 3. Don't hunt for a weaker defect to have something to show.
 
+## Step 4a: the goal check
+
+When the site has a goal, the scan response starts with a **GOAL CHECK** line: we walked the goal on a phone and a desktop (is it there, above the first screen, not covered, does clicking it lead somewhere, page speed, errors, sideways scrolling on phones). Report it first, one line per problem, most serious first. A goal problem outranks any other scan defect: it is the defect, and steps 5-6 apply to it (its `top_defect` carries the element for the locator).
+
+## Step 4b: goal-page review (from the code, about 2 minutes)
+
+Their goal page is the page where the goal button or form lives (or the page that leads to the goal path). Read its code and score it against this checklist. Only flag what the code actually shows:
+
+1. **One clear next step.** One primary call to action per screen; the label says the outcome ("Start my free trial", not "Submit"). Competing buttons of equal weight count against it.
+2. **First screen.** The headline says what it is and who it's for; the goal button is visible without scrolling at 390px and 1366px wide (use the goal check's result).
+3. **Friction.** Form fields: more than 3 at the top of the funnel, required fields that aren't needed, an account or card required before any value.
+4. **Reassurance next to the button.** Price or "free", "no card", what happens next. Only real claims; never suggest inventing proof.
+5. **Speed.** Hero images over 300 KB, render-blocking scripts in `<head>`, more than 2 font families, many third-party scripts.
+6. **Phone.** Tap targets under 44px, fixed bars or popups that cover content, text under 16px in inputs.
+7. **Dead ends.** Pages on the way to the goal without a link to the next step.
+
+Present the top 3 at most, each as: the problem in one line, `file:line`, the exact change. Label the block **"Review (best practice, not yet proven by your visitors)"**. Offer to apply them; after they ship, `mark_fix_applied` and the goal rate later says whether it helped. Don't pad: if the page is in good shape, say so in one line.
+
 ## Step 5: find the code
 
 1. Save `top_defect` from the scan response to a temp file and run the locator on it. The file carries the element's class list, id, href and where its text came from, so it beats a text search:

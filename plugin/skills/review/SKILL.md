@@ -30,3 +30,7 @@ Flow:
 Rules:
 - Numbers come only from tool output. Do not add estimates, percentages or projections of your own.
 - If the response says no conversion event is set, say that dollar figures stay off until one exists.
+
+## Goal-page review
+
+If the user asks for a review of their landing or goal page (or there's no visitor data yet), follow "Step 4b: goal-page review" in `${CLAUDE_PLUGIN_ROOT}/skills/setup/SKILL.md`. Label it as a review, not visitor proof.
