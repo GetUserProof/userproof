@@ -5,6 +5,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { keyCandidates, fetchWithKey, rejectedMessage } from "./userproof-keys.mjs";
 
 const API = process.env.USERPROOF_API_URL || "https://api.getuserproof.com";
 const read = (f) => { try { return readFileSync(f, "utf8"); } catch { return null; } };
@@ -16,15 +17,17 @@ const cfgText = read(join(cwd, ".userproof")) || read(join(cwd, ".whyusersleave"
 if (!cfgText) process.exit(0);
 let siteId;
 try { siteId = JSON.parse(cfgText).site_id; } catch {}
-const key = (process.env.USERPROOF_API_KEY || read(join(homedir(), ".config/userproof/key")) || read(join(homedir(), ".config/whyusersleave/key")) || "").trim();
-if (!siteId || !key) process.exit(0);
+if (!siteId || !keyCandidates().length) process.exit(0);
 
-let brief;
+let brief, keyNote = null;
 try {
-  const res = await fetch(`${API}/v2/brief?site_id=${encodeURIComponent(siteId)}`, {
-    headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(4000),
-  });
-  if (!res.ok) process.exit(0);
+  const { res, used, rejected } = await fetchWithKey(`${API}/v2/brief?site_id=${encodeURIComponent(siteId)}`, { signal: AbortSignal.timeout(4000) });
+  if (rejected.length) keyNote = rejectedMessage(rejected, used);
+  if (!used || !res.ok) {
+    // every key rejected: say so once instead of leaving a half-working install
+    if (keyNote) process.stdout.write(JSON.stringify({ systemMessage: `UserProof: ${keyNote}` }));
+    process.exit(0);
+  }
   brief = await res.json();
 } catch { process.exit(0); }
 
@@ -40,9 +43,9 @@ if (show) {
 
 const userLine = [brief.line, brief.notice, brief.next].filter(Boolean).join(" ");
 process.stdout.write(JSON.stringify({
-  ...(show ? { systemMessage: userLine } : {}),
+  ...(show || keyNote ? { systemMessage: [show ? userLine : "", keyNote].filter(Boolean).join("\n") } : {}),
   hookSpecificOutput: {
     hookEventName: "SessionStart",
-    additionalContext: `${brief.line}${brief.notice ? ` ${brief.notice}` : ""} The UserProof tools (get_top_fix, set_goal, check_fix) are available when the user asks why visitors leave, what to work on, or whether a change worked.`,
+    additionalContext: `${brief.line}${brief.notice ? ` ${brief.notice}` : ""} The UserProof tools (get_top_fix, set_goal, check_fix) are available when the user asks why visitors leave, what to work on, or whether a change worked. /userproof:go runs the whole check in one go.${keyNote ? ` Tell the user: ${keyNote}` : ""}`,
   },
 }));

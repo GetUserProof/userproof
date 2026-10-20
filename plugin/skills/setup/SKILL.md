@@ -20,6 +20,17 @@ Shell state doesn't persist between commands. Re-run those two lines in every co
 
 If `.userproof` has a `site_id` and `~/.config/userproof/key` exists, skip to step 4.
 
+## Step 0b: stale key exports
+
+A leftover `WUL_API_KEY`, `USERPROOF_API_KEY` or `WUL_PLUGIN_KEY` export in a shell profile can hold a dead key from an older install. The plugin tries the key file first and falls back on a 401, but the stale export still causes confusing warnings. Check once:
+
+```bash
+for v in WUL_API_KEY USERPROOF_API_KEY WUL_PLUGIN_KEY; do eval "x=\${$v}"; [ -n "$x" ] && echo "$v=${x:0:10}... http $(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $x" "${USERPROOF_API_URL:-https://api.getuserproof.com}/v2/usage")"; done
+grep -n 'WUL_API_KEY\|USERPROOF_API_KEY\|WUL_PLUGIN_KEY' ~/.zshrc ~/.zprofile ~/.zshenv ~/.bashrc ~/.bash_profile ~/.profile 2>/dev/null | sed -E 's/(wul_[a-z]_.{4}).*/\1.../'
+```
+
+For any that answers `http 401`, tell the user in one line which file and line to delete (the grep output), and that the key file `~/.config/userproof/key` is the one that works. Never edit their shell profile yourself and never print a full key.
+
 ## Step 1: look, then ask once (about 1 minute)
 
 **Look (no questions):**

@@ -29941,37 +29941,81 @@ var StdioServerTransport = class {
 };
 
 // index.js
-import { readFileSync, existsSync } from "fs";
-import { join } from "path";
-import { homedir } from "os";
-var VERSION = "3.6.1";
-var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
-function readKeyFile(p) {
+import { readFileSync as readFileSync2, existsSync } from "fs";
+import { join as join2 } from "path";
+
+// keys.mjs
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+var readFile = (p) => {
   try {
     return readFileSync(p, "utf8").trim();
   } catch {
     return "";
   }
-}
-function resolveKey() {
-  const cands = [
-    process.env.USERPROOF_API_KEY,
-    process.env.USERPROOF_PLUGIN_KEY,
-    process.env.CLAUDE_PLUGIN_OPTION_API_KEY,
-    process.env.WUL_API_KEY,
-    readKeyFile(join(homedir(), ".config", "userproof", "key")),
-    readKeyFile(join(homedir(), ".config", "whyusersleave", "key"))
+};
+var KEY_FILE = join(homedir(), ".config", "userproof", "key");
+var LEGACY_FILE = join(homedir(), ".config", "whyusersleave", "key");
+var maskKey = (k) => `${k.slice(0, 10)}\u2026`;
+var describeKey = (c) => `${c.source} (${maskKey(c.key)})`;
+function keyCandidates(env = process.env) {
+  const raw = [
+    ["$USERPROOF_API_KEY", env.USERPROOF_API_KEY],
+    ["$USERPROOF_PLUGIN_KEY", env.USERPROOF_PLUGIN_KEY],
+    ["$CLAUDE_PLUGIN_OPTION_API_KEY", env.CLAUDE_PLUGIN_OPTION_API_KEY],
+    ["~/.config/userproof/key", readFile(KEY_FILE)],
+    ["~/.config/whyusersleave/key", readFile(LEGACY_FILE)],
+    ["$WUL_PLUGIN_KEY", env.WUL_PLUGIN_KEY],
+    ["$WUL_API_KEY", env.WUL_API_KEY]
   ];
-  return cands.map((c) => (c || "").trim()).find((c) => c.startsWith("wul_")) || "";
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const [source, v] of raw) {
+    const key = (v || "").trim();
+    if (!key.startsWith("wul_") || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ source, key });
+  }
+  return out;
 }
+function rejectedMessage(rejected, worked) {
+  const names = rejected.map(describeKey).join(", ");
+  if (worked) {
+    const stale = rejected.filter((c) => c.source.startsWith("$"));
+    return `UserProof rejected the key from ${names}; ${describeKey(worked)} works. ` + (stale.length ? `Remove the stale export (${stale.map((c) => c.source.slice(1)).join(", ")}) from your shell profile (~/.zshrc, ~/.zprofile or ~/.bashrc) and open a new terminal.` : `Delete the stale key at ${rejected.map((c) => c.source).join(", ")}.`);
+  }
+  return `UserProof rejected every API key it found: ${names}. Run /userproof:setup to create a new one.`;
+}
+var preferred = null;
+async function fetchWithKey(url2, init = {}) {
+  let cands = keyCandidates();
+  if (preferred) cands = [...cands.filter((c) => c.key === preferred), ...cands.filter((c) => c.key !== preferred)];
+  const rejected = [];
+  let res = null, used = null;
+  for (const c of cands) {
+    used = c;
+    res = await fetch(url2, { ...init, headers: { ...init.headers, Authorization: `Bearer ${c.key}` } });
+    if (res.status !== 401) {
+      preferred = c.key;
+      return { res, used, rejected };
+    }
+    rejected.push(c);
+  }
+  return { res, used: null, rejected };
+}
+
+// index.js
+var VERSION = "3.7.0";
+var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 var NO_KEY_MESSAGE = "UserProof isn't connected yet: no API key found. Run /userproof:setup to create an account and key in about a minute. If you just ran setup, restart Claude Code (or reconnect with /mcp) so the tools pick up the key. https://getuserproof.com";
 var server = new McpServer({ name: "userproof", version: VERSION });
 function readConfig() {
   for (const f of [".userproof", ".whyusersleave"]) {
-    const p = join(process.cwd(), f);
+    const p = join2(process.cwd(), f);
     if (existsSync(p)) {
       try {
-        return JSON.parse(readFileSync(p, "utf8"));
+        return JSON.parse(readFileSync2(p, "utf8"));
       } catch {
       }
     }
@@ -29980,29 +30024,36 @@ function readConfig() {
 }
 var NoKey = class extends Error {
 };
+var keyWarning = null;
 async function api(path, options = {}) {
-  const key = resolveKey();
-  if (!key) throw new NoKey(NO_KEY_MESSAGE);
-  let res;
+  if (!keyCandidates().length) throw new NoKey(NO_KEY_MESSAGE);
+  let out;
   try {
-    res = await fetch(`${API_BASE}${path}`, {
+    out = await fetchWithKey(`${API_BASE}${path}`, {
       ...options,
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...options.headers }
+      headers: { "Content-Type": "application/json", ...options.headers }
     });
   } catch (e) {
     throw new Error(`Could not reach UserProof at ${API_BASE} (${e?.cause?.code || e?.message || "network error"}). Check your connection and try again.`);
   }
+  const { res, used, rejected } = out;
+  if (!used) throw new NoKey(rejectedMessage(rejected, null));
+  if (rejected.length && !keyWarning) keyWarning = rejectedMessage(rejected, used);
   const data = await res.json().catch(() => ({}));
-  if (!res.ok && res.status !== 402) {
-    if (res.status === 401) throw new NoKey("UserProof rejected the API key. Run /userproof:setup to create a new one.");
-    throw new Error(`UserProof API error ${res.status}: ${data.error || "request failed"}`);
-  }
+  if (!res.ok && res.status !== 402) throw new Error(`UserProof API error ${res.status}: ${data.error || "request failed"}`);
   return { status: res.status, data };
 }
 function tool(name, description, shape, fn) {
   server.tool(name, description, shape, async (args) => {
     try {
-      return await fn(args || {});
+      const out = await fn(args || {});
+      if (keyWarning && out?.content?.[0]?.type === "text") {
+        out.content[0].text += `
+
+Note: ${keyWarning}`;
+        keyWarning = null;
+      }
+      return out;
     } catch (e) {
       return { content: [{ type: "text", text: e instanceof NoKey ? e.message : String(e?.message || e) }], isError: !(e instanceof NoKey) };
     }
@@ -30054,7 +30105,7 @@ Call select_site with a site_id or domain to choose one.`, { sites });
 );
 tool(
   "get_top_fix",
-  "The single highest-impact fix on this site, with the sessions that prove it and the dollar math when a conversion event is set. Analyses are unlimited; plans are priced on recorded visits. If the result has a notice (visit limit near or passed), tell the user in one line and show any upgrade link on its own line. Free keeps 7 days of recordings: if the user asks about anything older or longer trends, tell them Pro and Scale keep 90 days and offer the upgrade tool.",
+  "The single highest-impact fix on this site, with the sessions that prove it and the dollar math when a conversion event is set. Analyses are unlimited; plans are priced on recorded visits. If the result has a notice (visit limit near or passed), tell the user in one line and show any upgrade link on its own line. Free keeps 7 days of recordings: if the user asks about anything older or longer trends, tell them Pro and Scale keep 90 days and offer the upgrade tool. When no finding passes the evidence bar the result ends with a funnel read (biggest visible leak, entry pages, sources, coverage): present it as a lead, not proof, and never as a verified fix.",
   {},
   async () => {
     const site = await getActiveSite();

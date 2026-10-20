@@ -16,6 +16,7 @@ Flow:
 2. **Get the top fix.** Call `get_top_fix`. Analyses are unlimited; if it returns a notice about the visit limit, pass it on in one line. Free keeps 7 days of recordings; if the user wants older data or long-term trends, say Pro and Scale keep 90 days and offer the `upgrade` tool.
    - If it returns `quota_exceeded`, show the upgrade link once, on its own line, say when the count resets, and stop.
    - Do not call it again until the user says they upgraded or the month resets.
+   - If it says no finding passes the evidence bar, it ends with a funnel read: the biggest visible leak, entry pages, sources and coverage. Present that as **a lead, not proof**, with its numbers exactly as returned, and say what you would test. Never present it as a verified fix, never mark it applied, and skip steps 3 to 5 unless the user asks to act on the lead.
 3. **Find the code.** Locate the exact file and element in this repo that the finding names, using page, element text and selector. If the code shows the finding is wrong (for example, the element has a working handler the data could not see), say that plainly and stop. Do not fix a non-problem.
 4. **Present:**
    - The fix in one line.
