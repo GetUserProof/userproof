@@ -167,6 +167,8 @@ curl -s -X POST -H "Authorization: Bearer $K" -H 'Content-Type: application/json
 
 Commit only the snippet change and `.userproof` with a short message, and push. Then check the live page **once**, in the background if your harness supports it (`curl -s <live url> | grep -c ingest.getuserproof.com`), and move on. Never wait or poll in the foreground for a deploy: if it isn't live yet, say it will show up when the deploy finishes. If they said no, leave the changes uncommitted and say what to deploy.
 
+Once the deploy is live, finish with `check_coverage` (GET `/v2/coverage?site_id=SITE_ID`): it reads the sitemap and says which pages still lack the snippet. A low percentage almost always means the snippet is on one page, not the shared `<head>` layout; fix that before trusting any rate.
+
 ## Step 4: free scan of the live site (1-3 minutes)
 
 ```bash

@@ -30006,7 +30006,7 @@ async function fetchWithKey(url2, init = {}) {
 }
 
 // index.js
-var VERSION = "3.7.1";
+var VERSION = "3.8.0";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 var NO_KEY_MESSAGE = "UserProof isn't connected yet: no API key found. Run /userproof:setup to create an account and key in about a minute. If you just ran setup, restart Claude Code (or reconnect with /mcp) so the tools pick up the key. https://getuserproof.com";
 var server = new McpServer({ name: "userproof", version: VERSION });
@@ -30060,7 +30060,9 @@ Note: ${keyWarning}`;
   });
 }
 var SELECT_PROMPT = "No active site. Run select_site to see the sites on this account and pick one, or run /userproof:setup if there isn't one yet.";
+var activeSite = null;
 async function getActiveSite() {
+  if (activeSite) return activeSite;
   const cfg = readConfig();
   if (cfg.site_id) return { id: cfg.site_id, domain: cfg.domain };
   const { data } = await api("/v2/sites");
@@ -30100,21 +30102,40 @@ Call select_site with a site_id or domain to choose one.`, { sites });
     const d = domain2 && domain2.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "").toLowerCase();
     const hit = sites.find((s) => s.id === site_id || d && s.domain === d);
     if (!hit) return text(`That site isn't on this account. Available: ${sites.map((s) => s.domain).join(", ") || "none"}.`);
-    return text(`Selected ${hit.domain}. Save {"site_id":"${hit.id}","domain":"${hit.domain}","fixes":[]} to .userproof in the project root so later sessions use it.`, { site: hit });
+    activeSite = { id: hit.id, domain: hit.domain };
+    return text(`Selected ${hit.domain} for this session. To keep it for later sessions, save {"site_id":"${hit.id}","domain":"${hit.domain}","fixes":[]} to .userproof in the project root.`, { site: hit });
   }
 );
 tool(
   "get_top_fix",
   "The single highest-impact fix on this site, with the sessions that prove it and the dollar math when a conversion event is set. Analyses are unlimited; plans are priced on recorded visits. If the result has a notice (visit limit near or passed), tell the user in one line and show any upgrade link on its own line. Free keeps 7 days of recordings: if the user asks about anything older or longer trends, tell them Pro and Scale keep 90 days and offer the upgrade tool. When no finding passes the evidence bar the result ends with a funnel read (biggest visible leak, entry pages, sources, coverage): present it as a lead, not proof, and never as a verified fix.",
-  {},
-  async () => {
-    const site = await getActiveSite();
+  {
+    domain: external_exports3.string().optional().describe("Read this site instead of the active one, e.g. example.com"),
+    site_id: external_exports3.string().optional().describe("Read this site id instead of the active one (from list_sites)")
+  },
+  async ({ domain: domain2, site_id }) => {
+    let site;
+    if (domain2 || site_id) {
+      const { data: all } = await api("/v2/sites");
+      const d = domain2 && domain2.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "").toLowerCase();
+      site = (all.sites || []).find((s) => s.id === site_id || d && s.domain === d);
+      if (!site) return text(`That site isn't on this account. Available: ${(all.sites || []).map((s) => s.domain).join(", ") || "none"}.`);
+    } else site = await getActiveSite();
     if (!site) return text(SELECT_PROMPT);
     const { data } = await api(`/v2/top-fix?site_id=${encodeURIComponent(site.id)}`);
     const t = `${data.text}${data.notice ? `
 
 ${data.notice}` : ""}`;
     return text(t, data);
+  }
+);
+tool(
+  "fleet",
+  "All your sites in one read: top fix or biggest leak per site, plus patterns that repeat across sites. Free.",
+  {},
+  async () => {
+    const { data } = await api("/v2/fleet");
+    return text(data.text, data);
   }
 );
 tool(
@@ -30199,6 +30220,17 @@ tool(
     let data = started;
     for (let i = 0; i < 6 && data.status === "running"; i++) ({ data } = await api(`/v2/scan?scan_id=${started.scan_id}&wait=60`));
     return text(data.text || JSON.stringify(data), data);
+  }
+);
+tool(
+  "check_coverage",
+  "Which pages of this site are missing the UserProof snippet, from the sitemap. Free.",
+  { fresh: external_exports3.boolean().optional().describe("Re-run now instead of reusing a check under 6 hours old") },
+  async ({ fresh }) => {
+    const site = await getActiveSite();
+    if (!site) return text(SELECT_PROMPT);
+    const { data } = await api(`/v2/coverage?site_id=${encodeURIComponent(site.id)}${fresh ? "&fresh=1" : ""}`);
+    return text(data.text || data.error || JSON.stringify(data), data);
   }
 );
 tool("get_activation", "Onboarding milestones for this UserProof account and minutes from signup to each, including time to the first verified fix. Free.", {}, async () => {

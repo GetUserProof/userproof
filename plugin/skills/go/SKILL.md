@@ -5,7 +5,7 @@ description: One word, whole check. Checks the fixes already shipped, gets the t
 
 Run the whole UserProof loop in one pass with the userproof MCP tools. If the tools are unavailable or say no API key is configured, run `/userproof:setup` and stop.
 
-The active site comes from `.userproof` (`site_id`); if the tools say there is no active site, call `select_site`.
+The active site comes from `.userproof` (`site_id`); if the tools say there is no active site, call `select_site`. If the user asks about all their sites (or there is no `.userproof` and the account has several), call `fleet` instead and give its per-site lines and repeated patterns.
 
 1. **Check earlier fixes.** For each fix in `.userproof` `fixes`, call `check_fix` and report the signal and conversion verdicts exactly as returned ("inconclusive" means not enough traffic yet; never round it up). Skip if there are none.
 2. **Top fix.** Call `get_top_fix`.
@@ -13,7 +13,8 @@ The active site comes from `.userproof` (`site_id`); if the tools say there is n
    - `quota_exceeded`: show the upgrade link once and stop.
 3. **No finding passes the bar.** The same result ends with a funnel read. Do not stop at "nothing found". Give:
    - The biggest visible leak in one line, labeled **a lead, not proof**.
-   - The entry pages and sources it came from, and the coverage line (sessions recorded against the total in their other analytics, if you can see it). A large gap is a finding of its own: say the snippet is missing somewhere.
+   - The entry pages and sources it came from, and the coverage line (sessions recorded against the total in their other analytics, if you can see it). A large gap is a finding of its own: say the snippet is missing somewhere. `get_top_fix` now appends the measured snippet coverage; for the list of pages missing it, call `check_coverage`.
+   - When the result says when a finding will be possible ("Closest to proof: ... about N days"), pass that on as the timeline. If it says more traffic is the lever, say so plainly.
    - Then look at that page in this repo and say what you would test, as a hypothesis. Do not edit code for a lead unless the user says to.
 4. **End with one next action.** Whichever of: ship this fix, test this lead, set a goal (if none), or fix the snippet coverage.
 

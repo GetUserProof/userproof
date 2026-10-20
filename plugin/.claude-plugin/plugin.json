@@ -1,7 +1,7 @@
 {
   "name": "userproof",
   "displayName": "UserProof",
-  "version": "3.7.1",
+  "version": "3.8.0",
   "description": "UX analytics for your coding agent. Sets up tracking from the terminal, then tells you what real visitors are failing to do on your site and hands you the fix.",
   "author": {
     "name": "UserProof",
