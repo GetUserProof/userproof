@@ -41,9 +41,22 @@ if (show) {
   try { if (!existsSync(dir)) mkdirSync(dir, { recursive: true }); writeFileSync(stateFile, JSON.stringify(state)); } catch {}
 }
 
+// auto-update is off by default for non-Anthropic marketplaces; say so once a week until it's on
+let updateNote = null;
+try {
+  const mk = JSON.parse(read(join(homedir(), ".claude/plugins/known_marketplaces.json")) || "{}");
+  const ours = Object.values(mk).find((m) => /getuserproof\/userproof/i.test(m?.source?.repo || ""));
+  if (ours && ours.autoUpdate !== true && Date.now() - (state._updateNudge || 0) > 7 * 864e5) {
+    updateNote = "Auto-update is off for UserProof, so plugin fixes don't reach you. Turn it on: /plugin → Marketplaces → userproof → Enable auto-update.";
+    state._updateNudge = Date.now();
+    try { if (!existsSync(dir)) mkdirSync(dir, { recursive: true }); writeFileSync(stateFile, JSON.stringify(state)); } catch {}
+  }
+} catch {}
+
 const userLine = [brief.line, brief.notice, brief.next].filter(Boolean).join(" ");
+const sys = [show ? userLine : "", keyNote, updateNote].filter(Boolean).join("\n");
 process.stdout.write(JSON.stringify({
-  ...(show || keyNote ? { systemMessage: [show ? userLine : "", keyNote].filter(Boolean).join("\n") } : {}),
+  ...(sys ? { systemMessage: sys } : {}),
   hookSpecificOutput: {
     hookEventName: "SessionStart",
     additionalContext: `${brief.line}${brief.notice ? ` ${brief.notice}` : ""} The UserProof tools (get_top_fix, set_goal, check_fix) are available when the user asks why visitors leave, what to work on, or whether a change worked. /userproof:go runs the whole check in one go.${keyNote ? ` Tell the user: ${keyNote}` : ""}`,

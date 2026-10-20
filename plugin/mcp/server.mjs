@@ -30006,7 +30006,7 @@ async function fetchWithKey(url2, init = {}) {
 }
 
 // index.js
-var VERSION = "3.7.0";
+var VERSION = "3.7.1";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 var NO_KEY_MESSAGE = "UserProof isn't connected yet: no API key found. Run /userproof:setup to create an account and key in about a minute. If you just ran setup, restart Claude Code (or reconnect with /mcp) so the tools pick up the key. https://getuserproof.com";
 var server = new McpServer({ name: "userproof", version: VERSION });
