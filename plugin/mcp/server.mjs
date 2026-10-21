@@ -30008,7 +30008,8 @@ async function fetchWithKey(url2, init = {}) {
 // index.js
 var VERSION = "3.8.0";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
-var NO_KEY_MESSAGE = "UserProof isn't connected yet: no API key found. Run /userproof:setup to create an account and key in about a minute. If you just ran setup, restart Claude Code (or reconnect with /mcp) so the tools pick up the key. https://getuserproof.com";
+var SETUP = "run setup (/userproof:setup in Claude Code; in Codex, Cursor or another agent, follow https://getuserproof.com/setup.md)";
+var NO_KEY_MESSAGE = `UserProof isn't connected yet: no API key found. To create an account and key in about a minute, ${SETUP}. If you just ran setup, restart your agent (or reconnect its MCP servers) so the tools pick up the key. https://getuserproof.com`;
 var server = new McpServer({ name: "userproof", version: VERSION });
 function readConfig() {
   for (const f of [".userproof", ".whyusersleave"]) {
@@ -30059,7 +30060,7 @@ Note: ${keyWarning}`;
     }
   });
 }
-var SELECT_PROMPT = "No active site. Run select_site to see the sites on this account and pick one, or run /userproof:setup if there isn't one yet.";
+var SELECT_PROMPT = `No active site. Run select_site to see the sites on this account and pick one, or ${SETUP} if there isn't one yet.`;
 var activeSite = null;
 async function getActiveSite() {
   if (activeSite) return activeSite;
@@ -30078,7 +30079,7 @@ tool(
   async () => {
     const { data } = await api("/v2/sites");
     const sites = data.sites || [];
-    if (!sites.length) return text("No sites on this account yet. Run /userproof:setup to add one.");
+    if (!sites.length) return text(`No sites on this account yet. To add one, ${SETUP}.`);
     return text(sites.map((s) => `${s.domain}  (site_id ${s.id})`).join("\n"), { sites });
   }
 );
@@ -30093,7 +30094,7 @@ tool(
     const { data } = await api("/v2/sites");
     const sites = data.sites || [];
     if (!site_id && !domain2) {
-      if (!sites.length) return text("No sites on this account yet. Run /userproof:setup to add one.");
+      if (!sites.length) return text(`No sites on this account yet. To add one, ${SETUP}.`);
       return text(`Sites on this account:
 ${sites.map((s) => `- ${s.domain} (site_id ${s.id})`).join("\n")}
 

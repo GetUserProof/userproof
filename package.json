@@ -1,0 +1,11 @@
+{
+  "name": "userproof",
+  "version": "3.8.0",
+  "description": "UserProof MCP server: the top fix from real visitor sessions, checked after you ship it. Works in Claude Code, Codex, Cursor and any MCP client.",
+  "type": "module",
+  "bin": { "userproof": "plugin/mcp/server.mjs" },
+  "files": ["plugin/mcp/server.mjs"],
+  "engines": { "node": ">=18" },
+  "homepage": "https://getuserproof.com",
+  "license": "MIT"
+}
