@@ -30006,7 +30006,7 @@ async function fetchWithKey(url2, init = {}) {
 }
 
 // index.js
-var VERSION = "3.8.0";
+var VERSION = "3.9.0";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 var SETUP = "run setup (/userproof:setup in Claude Code; in Codex, Cursor or another agent, follow https://getuserproof.com/setup.md)";
 var NO_KEY_MESSAGE = `UserProof isn't connected yet: no API key found. To create an account and key in about a minute, ${SETUP}. If you just ran setup, restart your agent (or reconnect its MCP servers) so the tools pick up the key. https://getuserproof.com`;
@@ -30179,7 +30179,7 @@ tool(
 );
 tool(
   "check_fix",
-  "Did a shipped fix work? Compares the finding's signal before and after the fix, and conversion against untouched pages (difference-in-differences). Says 'inconclusive' when traffic is too thin. Free.",
+  "Did a shipped fix work? Compares the finding's signal before and after the fix, the share of sessions that go on to a next step (click a control, use a form, open a second page), and conversion, the last two against untouched pages (difference-in-differences). Says 'inconclusive' when traffic is too thin. Free.",
   {
     finding_id: external_exports3.string().describe("Finding id the fix was recorded for"),
     url: external_exports3.string().optional().describe("Scan defects only: test this base URL instead of the live site, e.g. a local dev server running the fix")
@@ -30191,6 +30191,12 @@ tool(
       `Signal: ${data.signal?.verdict}. ${data.signal?.math || data.signal?.why || ""}`,
       `Conversion: ${data.conversion?.verdict}. ${data.conversion?.math || data.conversion?.why || ""}${data.conversion?.traffic_needed ? ` (${data.conversion.traffic_needed})` : ""}`
     ];
+    if (data.next_step) {
+      const n = data.next_step;
+      lines.push(`Next step: ${n.verdict}. ${n.math || n.why || ""}${n.traffic_needed ? ` (${n.traffic_needed})` : ""}${n.vs_same_page_other_sources ? `
+${n.vs_same_page_other_sources.math}` : ""}${n.hit ? `
+${n.hit.math}` : ""} This measures people going on to click, fill a form or open a second page. It is a step toward the goal, not proof of sales.`);
+    }
     return text(lines.join("\n"), data);
   }
 );
