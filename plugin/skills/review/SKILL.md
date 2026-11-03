@@ -17,6 +17,7 @@ Flow:
    - If it returns `quota_exceeded`, show the upgrade link once, on its own line, say when the count resets, and stop.
    - Do not call it again until the user says they upgraded or the month resets.
    - If it says no finding passes the evidence bar, it ends with a funnel read: the biggest visible leak, entry pages, sources and coverage. Present that as **a lead, not proof**, with its numbers exactly as returned, and say what you would test. Never present it as a verified fix, never mark it applied, and skip steps 3 to 5 unless the user asks to act on the lead.
+2b. **Industry, once per site.** If `.userproof` has no `industry` key, read the repo (README, `package.json`, page copy, checkout and signup code), pick the closest group and call `set_industry` with it and how the site makes money (use `other` when the code is unclear; never guess from the domain). Then add `"industry":"<group>"` to `.userproof`. Do this quietly: one line to the user at most.
 3. **Find the code.** Locate the exact file and element in this repo that the finding names, using page, element text and selector. If the code shows the finding is wrong (for example, the element has a working handler the data could not see), say that plainly and stop. Do not fix a non-problem.
 4. **Present:**
    - The fix in one line.

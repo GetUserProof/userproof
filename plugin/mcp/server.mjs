@@ -30006,7 +30006,7 @@ async function fetchWithKey(url2, init = {}) {
 }
 
 // index.js
-var VERSION = "3.9.0";
+var VERSION = "3.10.0";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 var SETUP = "run setup (/userproof:setup in Claude Code; in Codex, Cursor or another agent, follow https://getuserproof.com/setup.md)";
 var NO_KEY_MESSAGE = `UserProof isn't connected yet: no API key found. To create an account and key in about a minute, ${SETUP}. If you just ran setup, restart your agent (or reconnect its MCP servers) so the tools pick up the key. https://getuserproof.com`;
@@ -30152,19 +30152,37 @@ tool(
     return text(data.text || JSON.stringify(data));
   }
 );
+var INDUSTRY_GROUPS = ["saas_app", "ai_app", "dev_tool", "agency_b2b_service", "ecommerce", "newsletter_content", "free_web_tool", "marketplace", "local_service", "other"];
+var INDUSTRY_MODELS = ["self_serve_signup", "book_a_call", "buy_now", "subscribe", "other"];
+tool(
+  "set_industry",
+  "Tag this site with its industry group and how it makes money, so its numbers can be compared with similar sites. Pick from what the codebase shows (README, package.json, copy, checkout and signup code), not from a guess about the domain; if it's really unclear, use 'other'. Groups: saas_app, ai_app, dev_tool, agency_b2b_service, ecommerce, newsletter_content, free_web_tool, marketplace, local_service, other. Models: self_serve_signup, book_a_call, buy_now, subscribe, other. Free. Used only for anonymous peer comparisons; no site is ever named.",
+  {
+    group: external_exports3.enum(INDUSTRY_GROUPS).describe("The one group that fits best"),
+    model: external_exports3.enum(INDUSTRY_MODELS).describe("How the site makes money: self_serve_signup (free or trial signup), book_a_call, buy_now (one-off purchase), subscribe")
+  },
+  async ({ group, model }) => {
+    const site = await getActiveSite();
+    if (!site) return text(SELECT_PROMPT);
+    const { data } = await api("/v2/industry", { method: "POST", body: JSON.stringify({ site_id: site.id, group, model }) });
+    return text(data.text || JSON.stringify(data), data);
+  }
+);
 tool(
   "set_goal",
-  "Set the one thing this site's visitors should do (book a call, start checkout, sign up). Findings then rank by what they cost it, and fixes are judged by it. Find candidates in the code first (Stripe/checkout links, signup forms, CTA button text) and confirm with the user. Free.",
+  "Set the one thing this site's visitors should do (book a call, start checkout, sign up). Findings then rank by what they cost it, and fixes are judged by it. Find candidates in the code first (Stripe/checkout links, signup forms, CTA button text) and confirm with the user. Free. The reply carries goal_check {status, matches, suggestions}: the goal is checked at once against real clicks from the last 14 days, else the live page. If status is no_match, the goal will count 0 conversions: do not leave it; pick the right text from suggestions (or the code) and call set_goal again in the same session. If unverified (no click data yet, page may be drawn by JavaScript), confirm the exact button text in the code.",
   {
     name: external_exports3.string().describe("Plain name, e.g. 'Book a call'"),
     kind: external_exports3.enum(["click", "page"]).describe("click = a click whose text or selector contains match; page = visiting a path (exact, or a prefix ending in *)"),
     matches: external_exports3.array(external_exports3.string()).min(1).describe("Button texts exactly as rendered (e.g. ['Book a call', 'BOOK A CALL']) or paths (e.g. ['/thank-you', '/c/*'])"),
-    value_usd: external_exports3.number().optional().describe("What one conversion is worth, if the user knows; enables dollar figures")
+    value_usd: external_exports3.number().optional().describe("What one conversion is worth, if the user knows; enables dollar figures"),
+    industry: external_exports3.enum(INDUSTRY_GROUPS).optional().describe("Optional: the site's industry group, picked from the codebase (same as set_industry)"),
+    model: external_exports3.enum(INDUSTRY_MODELS).optional().describe("Optional with industry: how the site makes money")
   },
-  async ({ name, kind, matches, value_usd }) => {
+  async ({ name, kind, matches, value_usd, industry, model }) => {
     const site = await getActiveSite();
     if (!site) return text(SELECT_PROMPT);
-    const { data } = await api("/v2/goals", { method: "POST", body: JSON.stringify({ site_id: site.id, name, kind, matches, value_usd }) });
+    const { data } = await api("/v2/goals", { method: "POST", body: JSON.stringify({ site_id: site.id, name, kind, matches, value_usd, industry, model }) });
     return text(data.text || JSON.stringify(data), data);
   }
 );

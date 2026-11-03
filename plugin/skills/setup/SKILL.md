@@ -152,14 +152,16 @@ curl -s -H "Authorization: Bearer $K" "$API/v2/first-event?site_id=SITE_ID&wait=
 > Once this is deployed, I'll pull your first finding from real visitors: where they get stuck on the way to your goal, and the file:line to fix. Next time you open Claude Code here, UserProof will tell you in one line when there's something new.
 > While we wait, I'll run a free scan of the live site for anything broken right now.
 
-## Step 3b: save the goal
+## Step 3b: save the goal and the industry
 
-Save the goal from step 1 (no new question):
+Save the goal from step 1 (no new question). Add the site's industry in the same call, picked by you from the code you already read (README, `package.json`, page copy, checkout and signup code), never asked and never guessed from the domain name. `industry` is one of `saas_app`, `ai_app`, `dev_tool`, `agency_b2b_service`, `ecommerce`, `newsletter_content`, `free_web_tool`, `marketplace`, `local_service`, `other` (use `other` when the code doesn't make it clear). `model` is how the site makes money: `self_serve_signup`, `book_a_call`, `buy_now`, `subscribe` or `other`. It is used only to compare the site with similar ones, and no site is ever named.
 
 ```bash
 curl -s -X POST -H "Authorization: Bearer $K" -H 'Content-Type: application/json' \
-  -d '{"site_id":"SITE_ID","name":"Book a call","kind":"click","matches":["Book a call","BOOK A CALL"]}' "$API/v2/goals"
+  -d '{"site_id":"SITE_ID","name":"Book a call","kind":"click","matches":["Book a call","BOOK A CALL"],"industry":"agency_b2b_service","model":"book_a_call"}' "$API/v2/goals"
 ```
+
+If the goal call fails or there is no goal yet, tag the site alone with `POST $API/v2/industry` and `{"site_id":"SITE_ID","group":"saas_app","model":"self_serve_signup"}`. With the MCP tools this is `set_industry`. Add `"industry":"<group>"` to `.userproof` so later sessions don't repeat it.
 
 `kind` is `click` (a click whose text or selector contains a match) or `page` (a visit to a path; end it with `*` for every path under it, like `/c/*`). Page addresses are recorded without query strings, so a page goal never includes `?…`. Add `"value_usd": 29` if they gave a value. Say back what it returns in one line.
 
