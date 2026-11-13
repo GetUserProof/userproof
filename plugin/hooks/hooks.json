@@ -4,7 +4,23 @@
       {
         "matcher": "startup|resume",
         "hooks": [
-          { "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/userproof-brief.mjs\"", "timeout": 6 }
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/userproof-brief.mjs\"",
+            "timeout": 6
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/bin/userproof-fixwatch.mjs\"",
+            "timeout": 6
+          }
         ]
       }
     ]

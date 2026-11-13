@@ -53,12 +53,30 @@ try {
   }
 } catch {}
 
-const userLine = [brief.line, brief.notice, brief.next].filter(Boolean).join(" ");
+// 2026-11-12: remember the top finding for this repo so userproof-fixwatch.mjs can record the fix
+// when a session edits the code that renders it (0 of 10 accounts had ever marked a fix).
+try {
+  const pf = join(dir, "pending.json");
+  const pending = JSON.parse(read(pf) || "{}");
+  if (brief.top?.id) pending[cwd] = { site_id: siteId, finding_id: brief.top.id, page: brief.top.page, type: brief.top.type, text: brief.top.text, at: new Date().toISOString(), recorded: pending[cwd]?.finding_id === brief.top.id ? pending[cwd].recorded : false };
+  else delete pending[cwd];
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  writeFileSync(pf, JSON.stringify(pending));
+} catch {}
+
+const userLine = [brief.fix?.text, brief.line, brief.notice, brief.next].filter(Boolean).join(" ");
 const sys = [show ? userLine : "", keyNote, updateNote].filter(Boolean).join("\n");
 process.stdout.write(JSON.stringify({
   ...(sys ? { systemMessage: sys } : {}),
   hookSpecificOutput: {
     hookEventName: "SessionStart",
-    additionalContext: `${brief.line}${brief.notice ? ` ${brief.notice}` : ""} The UserProof tools (get_top_fix, set_goal, check_fix) are available when the user asks why visitors leave, what to work on, or whether a change worked. /userproof:go runs the whole check in one go.${keyNote ? ` Tell the user: ${keyNote}` : ""}`,
+    additionalContext: [
+      brief.line,
+      brief.notice,
+      brief.fix ? `Latest fix: ${brief.fix.text} In your first reply, tell the user this read in one or two sentences, including any link in it as is.` : null,
+      !brief.fix && brief.top ? `In your first reply, before anything else, tell the user in one sentence what UserProof found (${brief.top.type.replace("_", " ")} on ${brief.top.page}${brief.top.text ? ` on "${brief.top.text}"` : ""}, ${brief.top.affected_sessions} of ${brief.top.page_sessions} visitors) and ask if they want it fixed now. If yes: call get_top_fix for the evidence, find the code with the UserProof locate step, make the change, and call mark_fix_applied with finding_id ${brief.top.id || "(from get_top_fix)"} once it is deployed, so UserProof starts measuring it. Then carry on with what they asked.` : null,
+      "UserProof tools: get_top_fix, set_goal, mark_fix_applied, check_fix. /userproof:go runs the whole check in one go.",
+      keyNote ? `Tell the user: ${keyNote}` : null,
+    ].filter(Boolean).join(" "),
   },
 }));
