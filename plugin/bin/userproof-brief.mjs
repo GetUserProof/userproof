@@ -74,7 +74,7 @@ process.stdout.write(JSON.stringify({
       brief.line,
       brief.notice,
       brief.fix ? "In your first reply, tell the user the read on their latest fix (above) in one or two sentences, including any link in it as is." : null,
-      !brief.fix && brief.top ? `In your first reply, before anything else, tell the user in one sentence what UserProof found (${brief.top.type.replace("_", " ")} on ${brief.top.page}${brief.top.text ? ` on "${brief.top.text}"` : ""}, ${brief.top.affected_sessions} of ${brief.top.page_sessions} visitors) and ask if they want it fixed now. If yes: call get_top_fix for the evidence, find the code with the UserProof locate step, make the change, and call mark_fix_applied with finding_id ${brief.top.id || "(from get_top_fix)"} once it is deployed, so UserProof starts measuring it. Then carry on with what they asked.` : null,
+      brief.top && brief.top.id !== brief.fix?.finding_id ? `In your first reply, tell the user in one sentence what UserProof found (${brief.top.type.replace("_", " ")} on ${brief.top.page}${brief.top.text ? ` on "${brief.top.text}"` : ""}, ${brief.top.affected_sessions} of ${brief.top.page_sessions} visitors) and ask if they want it fixed now. If yes: call get_top_fix for the evidence, find the code with the UserProof locate step, make the change, and call mark_fix_applied with finding_id ${brief.top.id || "(from get_top_fix)"} once it is deployed, so UserProof starts measuring it. Then carry on with what they asked.` : null,
       "UserProof tools: get_top_fix, set_goal, mark_fix_applied, check_fix. /userproof:go runs the whole check in one go.",
       keyNote ? `Tell the user: ${keyNote}` : null,
     ].filter(Boolean).join(" "),
