@@ -64,7 +64,7 @@ try {
   writeFileSync(pf, JSON.stringify(pending));
 } catch {}
 
-const userLine = [brief.fix?.text, brief.line, brief.notice, brief.next].filter(Boolean).join(" ");
+const userLine = [brief.line, brief.notice, brief.next].filter(Boolean).join(" ");
 const sys = [show ? userLine : "", keyNote, updateNote].filter(Boolean).join("\n");
 process.stdout.write(JSON.stringify({
   ...(sys ? { systemMessage: sys } : {}),
@@ -73,7 +73,7 @@ process.stdout.write(JSON.stringify({
     additionalContext: [
       brief.line,
       brief.notice,
-      brief.fix ? `Latest fix: ${brief.fix.text} In your first reply, tell the user this read in one or two sentences, including any link in it as is.` : null,
+      brief.fix ? "In your first reply, tell the user the read on their latest fix (above) in one or two sentences, including any link in it as is." : null,
       !brief.fix && brief.top ? `In your first reply, before anything else, tell the user in one sentence what UserProof found (${brief.top.type.replace("_", " ")} on ${brief.top.page}${brief.top.text ? ` on "${brief.top.text}"` : ""}, ${brief.top.affected_sessions} of ${brief.top.page_sessions} visitors) and ask if they want it fixed now. If yes: call get_top_fix for the evidence, find the code with the UserProof locate step, make the change, and call mark_fix_applied with finding_id ${brief.top.id || "(from get_top_fix)"} once it is deployed, so UserProof starts measuring it. Then carry on with what they asked.` : null,
       "UserProof tools: get_top_fix, set_goal, mark_fix_applied, check_fix. /userproof:go runs the whole check in one go.",
       keyNote ? `Tell the user: ${keyNote}` : null,
