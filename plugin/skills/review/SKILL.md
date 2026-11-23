@@ -13,7 +13,7 @@ Flow:
 
 1. **Check earlier fixes.** If `.userproof` lists fixes marked applied earlier, call `check_fix` for each. Report the signal and conversion verdicts exactly as returned.
    - "inconclusive" means there isn't enough traffic yet. Say so, and don't round it up to "fixed".
-2. **Get the top fix.** Call `get_top_fix`. Analyses are unlimited; if it returns a notice about the visit limit, pass it on in one line. Free keeps 7 days of recordings; if the user wants older data or long-term trends, say Pro and Scale keep 90 days and offer the `upgrade` tool.
+2. **Get the top fix.** Call `get_top_fix`. Analyses are unlimited; if it returns a notice or a locked result (`locked: true` on Free), show the `upgrade_url` on its own line so the user can unlock exact DOM selectors, file:line code fixes, 90-day retention, and before/after verdicts on Pro ($29/mo), Scale ($99/mo), or Agency ($199/mo, which also adds `share_fix_verdict` client report links). If the site has no UserProof traffic yet and the repo uses PostHog or Microsoft Clarity, offer `import_sessions` to pull historical behavior on day one.
    - If it returns `quota_exceeded`, show the upgrade link once, on its own line, say when the count resets, and stop.
    - Do not call it again until the user says they upgraded or the month resets.
    - If it says no finding passes the evidence bar, it ends with a funnel read: the biggest visible leak, entry pages, sources and coverage. Present that as **a lead, not proof**, with its numbers exactly as returned, and say what you would test. Never present it as a verified fix, never mark it applied, and skip steps 3 to 5 unless the user asks to act on the lead.

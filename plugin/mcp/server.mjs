@@ -30006,7 +30006,7 @@ async function fetchWithKey(url2, init = {}) {
 }
 
 // index.js
-var VERSION = "3.11.0";
+var VERSION = "3.12.0";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 var SETUP = "run setup (/userproof:setup in Claude Code; in Codex, Cursor or another agent, follow https://getuserproof.com/setup.md)";
 var NO_KEY_MESSAGE = `UserProof isn't connected yet: no API key found. To create an account and key in about a minute, ${SETUP}. If you just ran setup, restart your agent (or reconnect its MCP servers) so the tools pick up the key. https://getuserproof.com`;
@@ -30109,7 +30109,7 @@ Call select_site with a site_id or domain to choose one.`, { sites });
 );
 tool(
   "get_top_fix",
-  "The single highest-impact fix on this site, with the sessions that prove it and the dollar math when a conversion event is set. Analyses are unlimited; plans are priced on recorded visits. If the result has a notice (visit limit near or passed), tell the user in one line and show any upgrade link on its own line. Free keeps 7 days of recordings: if the user asks about anything older or longer trends, tell them Pro and Scale keep 90 days and offer the upgrade tool. When no finding passes the evidence bar the result ends with a funnel read (biggest visible leak, entry pages, sources, coverage): present it as a lead, not proof, and never as a verified fix.",
+  "The single highest-impact fix on this site, with the sessions that prove it and the dollar math when a conversion event is set. Free shows the proven leak headline and affected visitor count (1 site, 1,000 lifetime starter visits, 7-day retention); Pro ($29/mo), Scale ($99/mo), and Agency ($199/mo) unlock the exact DOM selector, file:line code locator, proof session traces, 90-day retention, and statistical fix verdicts. If the result has a notice or upgrade link, show the upgrade link on its own line. When no finding passes the evidence bar the result ends with a funnel read (present as a lead, not proof).",
   {
     domain: external_exports3.string().optional().describe("Read this site instead of the active one, e.g. example.com"),
     site_id: external_exports3.string().optional().describe("Read this site id instead of the active one (from list_sites)")
@@ -30188,16 +30188,52 @@ tool(
 );
 tool(
   "upgrade",
-  "Get a checkout link to upgrade the UserProof plan (Pro $29/mo for 50,000 visits, Scale $99/mo for 250,000; both unlimited sites). Use when the user asks to upgrade or pay. Show the link on its own line.",
-  { plan: external_exports3.enum(["pro", "scale"]).optional().describe("Defaults to the next plan up") },
+  "Get a checkout link to upgrade the UserProof membership: Pro $29/mo (up to 3 sites, 50,000 visits/mo, full code fixes and verdicts), Scale $99/mo (up to 10 sites, 250,000 visits/mo), or Agency $199/mo (unlimited client sites, 1,000,000 visits/mo, shareable client verdict links). Show the link on its own line.",
+  { plan: external_exports3.enum(["pro", "scale", "agency"]).optional().describe("Defaults to the next plan up") },
   async ({ plan }) => {
     const { data } = await api("/v2/upgrade", { method: "POST", body: JSON.stringify({ plan }) });
     return text(data.text || JSON.stringify(data), data);
   }
 );
 tool(
+  "import_sessions",
+  "Import existing historical session and frustration data from PostHog (HogQL Query API) or Microsoft Clarity (Data Export API) so UserProof produces real behavioral conversion fixes on day one without waiting days for new script traffic. The API key or token is used once in memory and never stored.",
+  {
+    provider: external_exports3.enum(["posthog", "clarity"]).describe("'posthog' (Personal API Key phx_... with query:read) or 'clarity' (Settings -> Data Export API token)"),
+    api_key: external_exports3.string().describe("Read-only PostHog Personal API Key (phx_...) or Microsoft Clarity Data Export API token. Used in memory only, never saved."),
+    project_id: external_exports3.string().optional().describe("PostHog project ID if the key has access to multiple projects"),
+    host: external_exports3.string().optional().describe("PostHog host: 'us.posthog.com' (default), 'eu.posthog.com', or custom https:// host"),
+    days: external_exports3.number().optional().describe("Days of history to import (PostHog: 1-30, default 14; Clarity: 1-3, default 3)"),
+    site_id: external_exports3.string().optional().describe("Optional site_id; defaults to the active project site")
+  },
+  async ({ provider, api_key, project_id, host, days, site_id }) => {
+    const site = site_id ? { id: site_id } : await getActiveSite();
+    if (!site) return text(SELECT_PROMPT);
+    const { data } = await api("/v2/import", {
+      method: "POST",
+      body: JSON.stringify({ site_id: site.id, provider, api_key, project_id, host, days })
+    });
+    return text(data.text || data.error || JSON.stringify(data), data);
+  }
+);
+tool(
+  "share_fix_verdict",
+  "Create or refresh a public, client-ready Verified Conversion Fix report URL (https://getuserproof.com/verdict?t=...) for a shipped fix, showing before/after frustration rates and difference-in-differences conversion math without exposing internal code paths. Included on UserProof Agency ($199/mo).",
+  {
+    finding_id: external_exports3.string().describe("Finding id that has a recorded fix (from mark_fix_applied)"),
+    agency_name: external_exports3.string().optional().describe("Optional agency or studio name displayed on the client report header")
+  },
+  async ({ finding_id, agency_name }) => {
+    const { data } = await api("/v2/share-verdict", {
+      method: "POST",
+      body: JSON.stringify({ finding_id, agency_name })
+    });
+    return text(data.text || data.error || JSON.stringify(data), data);
+  }
+);
+tool(
   "check_fix",
-  "Did a shipped fix work? Compares the finding's signal before and after the fix, the share of sessions that go on to a next step (click a control, use a form, open a second page), and conversion, the last two against untouched pages (difference-in-differences). Says 'inconclusive' when traffic is too thin. Free.",
+  "Did a shipped fix work? Compares the finding's signal before and after the fix, next-step progression, and goal conversion against untouched pages (difference-in-differences). Full verdicts unlock on Pro ($29/mo), Scale ($99/mo), and Agency ($199/mo).",
   {
     finding_id: external_exports3.string().describe("Finding id the fix was recorded for"),
     url: external_exports3.string().optional().describe("Scan defects only: test this base URL instead of the live site, e.g. a local dev server running the fix")
@@ -30262,14 +30298,15 @@ tool("get_activation", "Onboarding milestones for this UserProof account and min
   const { data } = await api("/v2/activation");
   return text(Object.entries(data.minutes_from_signup || {}).map(([k, v]) => `${k}: ${v} min`).join("\n") || "No milestones yet.", data);
 });
-tool("get_usage", "The plan, recorded visits this month against its limit, sites against the site limit, and when the count resets. Free.", {}, async () => {
+tool("get_usage", "The plan, recorded visits used against its limit, sites against the site limit, and billing portal link. Free.", {}, async () => {
   const { data } = await api("/v2/usage");
   const n = (x) => Number(x).toLocaleString("en-US");
+  const scope = data.lifetime_cap ? "lifetime starter visits" : `recorded visits this month (resets ${String(data.resets_at).slice(0, 10)})`;
   return text([
-    `${data.plan} plan: ${n(data.visits)} of ${n(data.visit_limit)} recorded visits this month (resets ${String(data.resets_at).slice(0, 10)}).`,
-    `Sites: ${data.sites} of ${data.site_limit ?? "unlimited"}. Analyses: unlimited. Recordings kept: ${data.retention_days} days.`,
+    `${data.plan} plan: ${n(data.visits)} of ${n(data.visit_limit)} ${scope}.`,
+    `Sites: ${data.sites} of ${data.site_limit ?? "unlimited"}. Analyses: unlimited. Recordings kept: ${data.retention_days} days.${data.shareable_verdicts ? " Shareable client verdict links: enabled." : ""}`,
     data.retention_note,
-    data.sampling ? `Over the limit: ${data.sampling}.` : null,
+    data.sampling ? `Limit status: ${data.sampling}.` : null,
     data.manage_billing_url ? `Manage billing: ${data.manage_billing_url}` : null
   ].filter(Boolean).join("\n"), data);
 });

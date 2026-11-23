@@ -68,7 +68,7 @@ curl -s -X POST -H "Authorization: Bearer $K" -H 'Content-Type: application/json
   -d '{"domain":"THEIR_DOMAIN"}' "$API/v2/sites"
 ```
 
-   A `site_limit` result means the Free plan's 3 sites are taken: show its `upgrade_url` on its own line and stop.
+   A `site_limit` result means the current plan's site limit is reached (Free covers 1 site, Pro 3, Scale 10, Agency unlimited): show its `upgrade_url` on its own line and stop.
 
 2. **No key yet: sign in.** Start a sign-in and show the link. The person signs in on getuserproof.com with GitHub, Google or an emailed link and approves the code; nobody types an email into the terminal.
 
@@ -165,7 +165,12 @@ If the goal call fails or there is no goal yet, tag the site alone with `POST $A
 
 `kind` is `click` (a click whose text or selector contains a match) or `page` (a visit to a path; end it with `*` for every path under it, like `/c/*`). Page addresses are recorded without query strings, so a page goal never includes `?…`. Add `"value_usd": 29` if they gave a value. Say back what it returns in one line.
 
-## Step 3c: deploy (only if they said yes)
+## Step 3c: day-one import if PostHog or Microsoft Clarity is already installed
+
+If Step 1 noticed `posthog-js`, `posthog.com`, or `clarity.ms` already in the codebase, tell the user in one line after setup finishes:
+- They don't have to wait days for new traffic: if they paste a read-only PostHog Personal API Key (`phx_...`, `query:read` scope) or a Microsoft Clarity Data Export API token, you can call `import_sessions` (`POST $API/v2/import`) right now to pull their last 14 days of sessions (or 3 days of Clarity metrics) and surface their #1 behavioral conversion fix immediately. The token is used once in memory and never saved.
+
+## Step 3d: deploy (only if they said yes)
 
 Commit only the snippet change and `.userproof` with a short message, and push. Then check the live page **once**, in the background if your harness supports it (`curl -s <live url> | grep -c ingest.getuserproof.com`), and move on. Never wait or poll in the foreground for a deploy: if it isn't live yet, say it will show up when the deploy finishes. If they said no, leave the changes uncommitted and say what to deploy.
 
