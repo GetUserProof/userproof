@@ -30006,7 +30006,7 @@ async function fetchWithKey(url2, init = {}) {
 }
 
 // index.js
-var VERSION = "3.12.0";
+var VERSION = "3.12.1";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 var SETUP = "run setup (/userproof:setup in Claude Code; in Codex, Cursor or another agent, follow https://getuserproof.com/setup.md)";
 var NO_KEY_MESSAGE = `UserProof isn't connected yet: no API key found. To create an account and key in about a minute, ${SETUP}. If you just ran setup, restart your agent (or reconnect its MCP servers) so the tools pick up the key. https://getuserproof.com`;
@@ -30044,8 +30044,14 @@ async function api(path, options = {}) {
   if (!res.ok && res.status !== 402) throw new Error(`UserProof API error ${res.status}: ${data.error || "request failed"}`);
   return { status: res.status, data };
 }
-function tool(name, description, shape, fn) {
-  server.tool(name, description, shape, async (args) => {
+var RO = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true };
+var MUT = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true };
+function tool(name, description, shape, annotations, fn) {
+  if (typeof annotations === "function") {
+    fn = annotations;
+    annotations = RO;
+  }
+  server.tool(name, description, shape, annotations, async (args) => {
     try {
       const out = await fn(args || {});
       if (keyWarning && out?.content?.[0]?.type === "text") {
@@ -30090,6 +30096,7 @@ tool(
     site_id: external_exports3.string().optional().describe("Site id from list_sites"),
     domain: external_exports3.string().optional().describe("Domain, e.g. example.com")
   },
+  MUT,
   async ({ site_id, domain: domain2 }) => {
     const { data } = await api("/v2/sites");
     const sites = data.sites || [];
@@ -30147,6 +30154,7 @@ tool(
     fixed_at: external_exports3.string().optional().describe("ISO time the fix went live; defaults to now"),
     note: external_exports3.string().optional().describe("What was changed")
   },
+  MUT,
   async ({ finding_id, fixed_at, note }) => {
     const { data } = await api("/v2/fix-applied", { method: "POST", body: JSON.stringify({ finding_id, fixed_at, note }) });
     return text(data.text || JSON.stringify(data));
@@ -30161,6 +30169,7 @@ tool(
     group: external_exports3.enum(INDUSTRY_GROUPS).describe("The one group that fits best"),
     model: external_exports3.enum(INDUSTRY_MODELS).describe("How the site makes money: self_serve_signup (free or trial signup), book_a_call, buy_now (one-off purchase), subscribe")
   },
+  MUT,
   async ({ group, model }) => {
     const site = await getActiveSite();
     if (!site) return text(SELECT_PROMPT);
@@ -30179,6 +30188,7 @@ tool(
     industry: external_exports3.enum(INDUSTRY_GROUPS).optional().describe("Optional: the site's industry group, picked from the codebase (same as set_industry)"),
     model: external_exports3.enum(INDUSTRY_MODELS).optional().describe("Optional with industry: how the site makes money")
   },
+  MUT,
   async ({ name, kind, matches, value_usd, industry, model }) => {
     const site = await getActiveSite();
     if (!site) return text(SELECT_PROMPT);
@@ -30190,6 +30200,7 @@ tool(
   "upgrade",
   "Get a checkout link to upgrade the UserProof membership: Pro $29/mo (up to 3 sites, 50,000 visits/mo, full code fixes and verdicts), Scale $99/mo (up to 10 sites, 250,000 visits/mo), or Agency $199/mo (unlimited client sites, 1,000,000 visits/mo, shareable client verdict links). Show the link on its own line.",
   { plan: external_exports3.enum(["pro", "scale", "agency"]).optional().describe("Defaults to the next plan up") },
+  MUT,
   async ({ plan }) => {
     const { data } = await api("/v2/upgrade", { method: "POST", body: JSON.stringify({ plan }) });
     return text(data.text || JSON.stringify(data), data);
@@ -30206,6 +30217,7 @@ tool(
     days: external_exports3.number().optional().describe("Days of history to import (PostHog: 1-30, default 14; Clarity: 1-3, default 3)"),
     site_id: external_exports3.string().optional().describe("Optional site_id; defaults to the active project site")
   },
+  MUT,
   async ({ provider, api_key, project_id, host, days, site_id }) => {
     const site = site_id ? { id: site_id } : await getActiveSite();
     if (!site) return text(SELECT_PROMPT);
@@ -30223,6 +30235,7 @@ tool(
     finding_id: external_exports3.string().describe("Finding id that has a recorded fix (from mark_fix_applied)"),
     agency_name: external_exports3.string().optional().describe("Optional agency or studio name displayed on the client report header")
   },
+  MUT,
   async ({ finding_id, agency_name }) => {
     const { data } = await api("/v2/share-verdict", {
       method: "POST",
