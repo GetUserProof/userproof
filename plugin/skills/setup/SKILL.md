@@ -33,13 +33,13 @@ For any that answers `http 401`, tell the user in one line which file and line t
 
 ## Step 0c: auto-update
 
-Claude Code leaves auto-update off for marketplaces outside Anthropic's, so fixes to this plugin never reach the user unless it's on. Turn it on for the UserProof marketplace (the same switch as `/plugin` → Marketplaces → Enable auto-update):
+Claude Code leaves auto-update off for marketplaces outside Anthropic's, so fixes to this plugin never reach the user unless it's on. That switch is the user's call, so this step only reads it:
 
 ```bash
-node -e 'const f=require("os").homedir()+"/.claude/plugins/known_marketplaces.json",fs=require("fs");let d;try{d=JSON.parse(fs.readFileSync(f,"utf8"))}catch{process.exit(0)}let hit=0;for(const m of Object.values(d))if(/getuserproof\/userproof/i.test(m?.source?.repo||"")){if(m.autoUpdate!==true){m.autoUpdate=true;hit=1}}if(hit){fs.writeFileSync(f,JSON.stringify(d,null,2));console.log("auto-update on")}else console.log("auto-update already on or marketplace not found")'
+node -e 'const f=require("os").homedir()+"/.claude/plugins/known_marketplaces.json",fs=require("fs");let d;try{d=JSON.parse(fs.readFileSync(f,"utf8"))}catch{process.exit(0)}for(const m of Object.values(d))if(/getuserproof\/userproof/i.test(m?.source?.repo||"")&&m.autoUpdate!==true)console.log("auto-update off")'
 ```
 
-If it printed "auto-update on", tell the user in one line: "Turned on auto-update for UserProof, so new versions install at the start of a session and load on the next restart. Undo: /plugin → Marketplaces → userproof." Skip silently otherwise.
+If it printed "auto-update off", add the Auto-update question in step 1. Otherwise leave it out.
 
 ## Step 1: look, then ask once (about 1 minute)
 
@@ -54,10 +54,17 @@ If it printed "auto-update on", tell the user in one line: "Turned on auto-updat
 - **Goal:** "What's the one thing visitors should do on <domain>?" Options: your candidates, e.g. "Click 'Book a call'", "Reach /thank-you". The user can type another.
 - **Value:** "What is one <goal> worth, roughly?" Options: the price you found if any, "Skip for now". If the repo serves several domains, ask "Which site should UserProof record?" here instead and skip the value.
 - **Deploy:** "When setup is done, should I commit and push so it goes live?" Options: "Yes, commit and push", "No, I'll deploy it".
+- **Auto-update** (only if step 0c printed "auto-update off"): "Turn on auto-update for UserProof? New versions install at the start of a session and load on the next restart. This sets `autoUpdate` on the UserProof entry in `~/.claude/plugins/known_marketplaces.json`, and you can undo it in /plugin → Marketplaces → userproof." Options: "Yes, turn it on", "No, leave it off".
 
 **Several sites in one go:** still ask. Put one goal question per site in the same AskUserQuestion call (4 questions per call; a second call only if there are more than 4 sites), and skip the value and deploy questions or ask them once for all sites. Never save a goal the user didn't pick. Only when no question tool exists (a headless run) pick the best candidate yourself and say which and why.
 
 Echo the answers back in one line, then run steps 1a to 5 without asking anything else. (Signing in, in step 1a, isn't a question: it's a link they open.)
+
+If the user said yes to auto-update, run this once. If they said no, or nobody answered (a headless run), leave the file alone:
+
+```bash
+node -e 'const f=require("os").homedir()+"/.claude/plugins/known_marketplaces.json",fs=require("fs");let d;try{d=JSON.parse(f&&fs.readFileSync(f,"utf8"))}catch{process.exit(0)}let hit=0;for(const m of Object.values(d))if(/getuserproof\/userproof/i.test(m?.source?.repo||"")){if(m.autoUpdate!==true){m.autoUpdate=true;hit=1}}if(hit){fs.writeFileSync(f,JSON.stringify(d,null,2));console.log("auto-update on")}else console.log("auto-update already on or marketplace not found")'
+```
 
 ## Step 1a: account
 

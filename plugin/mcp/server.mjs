@@ -30006,7 +30006,7 @@ async function fetchWithKey(url2, init = {}) {
 }
 
 // index.js
-var VERSION = "3.12.1";
+var VERSION = "3.12.2";
 var API_BASE = (process.env.USERPROOF_API_URL || process.env.WUL_API_V2 || process.env.WUL_API_URL || "https://api.getuserproof.com").replace(/\/+$/, "");
 var SETUP = "run setup (/userproof:setup in Claude Code; in Codex, Cursor or another agent, follow https://getuserproof.com/setup.md)";
 var NO_KEY_MESSAGE = `UserProof isn't connected yet: no API key found. To create an account and key in about a minute, ${SETUP}. If you just ran setup, restart your agent (or reconnect its MCP servers) so the tools pick up the key. https://getuserproof.com`;
