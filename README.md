@@ -1,5 +1,7 @@
 # UserProof for Claude Code, Codex and Cursor
 
+[![GetUserProof/userproof MCP server](https://glama.ai/mcp/servers/GetUserProof/userproof/badges/score.svg)](https://glama.ai/mcp/servers/GetUserProof/userproof)
+
 UserProof shows you the one fix your real visitors are begging for, with the file and line, then checks whether it worked after you ship. https://getuserproof.com
 
 ## Install
